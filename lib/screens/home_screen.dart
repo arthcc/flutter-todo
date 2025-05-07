@@ -97,6 +97,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       icon: const Icon(Icons.add),
                       label: const Text('Adicionar Tarefa'),
                       onPressed: () => Navigator.pushNamed(context, '/add'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), // ajuste conforme necessário
+                      ),
                     ),
                 ],
               ),
