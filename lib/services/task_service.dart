@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task.dart';
+import 'package:uuid/uuid.dart'; 
 
 class TaskService {
   static const String _tasksKey = 'tasks';
-  
+  final uuid = Uuid();
   // Singleton pattern
   static final TaskService _instance = TaskService._internal();
   
@@ -80,5 +81,46 @@ class TaskService {
       task.title.toLowerCase().contains(lowerQuery) || 
       task.description.toLowerCase().contains(lowerQuery)
     ).toList();
+  }
+
+// Importar tarefas de CSV (lista de mapas)
+  Future<void> addTasksFromMapList(List<Map<String, dynamic>> maps) async {
+    final existingTasks = await getTasks();
+
+    final newTasks = maps.map((map) {
+      final priority = TaskPriority.values.firstWhere(
+        (p) => p.name.toLowerCase() == map['priority'].toString().toLowerCase(),
+        orElse: () => TaskPriority.medium,
+      );
+
+      final category = TaskCategory.values.firstWhere(
+        (c) => c.name.toLowerCase() == map['category'].toString().toLowerCase(),
+        orElse: () => TaskCategory.other,
+      );
+
+      return Task(
+        id: uuid.v4(), // ✅ usa UUID em vez de timestamp
+        title: map['title'] ?? '',
+        description: map['description'] ?? '',
+        isCompleted: map['completed']?.toString().toLowerCase() == 'true',
+        priority: priority,
+        category: category,
+      );
+    }).toList();
+
+    final allTasks = [...existingTasks, ...newTasks];
+    await saveTasks(allTasks);
+  }
+
+  // Exportar todas as tarefas como lista de Map (para salvar em CSV)
+  Future<List<Map<String, dynamic>>> getAllTasksAsMapList() async {
+    final tasks = await getTasks();
+    return tasks.map((t) => {
+      "title": t.title,
+      "description": t.description,
+      "completed": t.isCompleted,
+      "priority": t.priority.name,
+      "category": t.category.name,
+    }).toList();
   }
 } 
