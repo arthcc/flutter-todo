@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:todo_flutter_app/services/csv_utils.dart';
 import '../models/task.dart';
 import '../providers/task_provider.dart';
 import '../widgets/task_item.dart';
@@ -38,6 +39,43 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       appBar: AppBar(
         title: const Text('Lista de Tarefas', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.upload_file),
+            onPressed: () async {
+              final imported = await CsvUtils.importCsv();
+
+              if (!mounted) return;
+
+              if (imported.isNotEmpty) {
+
+                await context.read<TaskProvider>().importTasksFromCsv(imported);
+
+                if (!mounted) return;
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Importação concluída')),
+                );
+              }
+            },
+            tooltip: 'Importar CSV',
+          ),
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: () async {
+              final tasks = await context.read<TaskProvider>().exportTasksToCsv();
+
+              if (!mounted) return;
+
+              final path = await CsvUtils.exportCsv(tasks);
+
+              if (!mounted) return;
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(path)),
+              );
+            },
+            tooltip: 'Exportar CSV',
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => Navigator.pushNamed(context, '/search'),
@@ -97,6 +135,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       icon: const Icon(Icons.add),
                       label: const Text('Adicionar Tarefa'),
                       onPressed: () => Navigator.pushNamed(context, '/add'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), // ajuste conforme necessário
+                      ),
                     ),
                 ],
               ),

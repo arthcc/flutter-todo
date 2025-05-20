@@ -19,6 +19,7 @@ class TaskProvider with ChangeNotifier {
   }
   
   Future<void> _loadTasks() async {
+    print('Tarefas carregadas: $_tasks'); 
     _isLoading = true;
     notifyListeners();
     
@@ -115,4 +116,24 @@ class TaskProvider with ChangeNotifier {
       return [];
     }
   }
+
+  Future<void> importTasksFromCsv(List<Map<String, dynamic>> maps) async {
+  try {
+    print('Importando tarefas: $maps');
+    await _taskService.addTasksFromMapList(maps);
+    await _loadTasks();
+  } catch (error) {
+    debugPrint('Error importing tasks: $error');
+  }
+}
+
+Future<List<Map<String, dynamic>>> exportTasksToCsv() async {
+  try {
+    return await _taskService.getAllTasksAsMapList();
+  } catch (error) {
+    debugPrint('Error exporting tasks: $error');
+    return [];
+  }
+}
+
 } 
