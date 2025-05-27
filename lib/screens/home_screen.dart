@@ -66,12 +66,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
               if (!mounted) return;
 
-              final path = await CsvUtils.exportCsv(tasks);
+              final resultMessage = await CsvUtils.exportCsv(tasks);
 
               if (!mounted) return;
               
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(path)),
+                SnackBar(content: Text(resultMessage)),
               );
             },
             tooltip: 'Exportar CSV',
