@@ -90,30 +90,36 @@ class Task {
       category: category ?? this.category,
     );
   }
-  
-  // Convert to Map for saving to shared preferences
+
+  /// Serializa para salvar no SharedPreferences ou SQLite
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'title': title,
       'description': description,
-      'isCompleted': isCompleted,
+      'isCompleted': isCompleted ? 1 : 0, // ✅ SQLite usa inteiro para booleano
       'dueDate': dueDate?.millisecondsSinceEpoch,
       'priority': priority.index,
       'category': category.index,
     };
   }
-  
-  // Create from Map when reading from shared preferences
+
+  /// Reconstrói a Task a partir de um Map vindo do banco
   factory Task.fromMap(Map<String, dynamic> map) {
     return Task(
-      id: map['id'],
-      title: map['title'],
-      description: map['description'],
-      isCompleted: map['isCompleted'],
-      dueDate: map['dueDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['dueDate']) : null,
-      priority: TaskPriority.values[map['priority']],
-      category: TaskCategory.values[map['category']],
+      id: map['id'].toString(),
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      isCompleted: (map['isCompleted'] is bool)
+          ? map['isCompleted']
+          : map['isCompleted'] == 1,
+      dueDate: map['dueDate'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['dueDate'])
+          : null,
+      priority: TaskPriority.values[
+          (map['priority'] is int) ? map['priority'] : int.tryParse(map['priority'].toString()) ?? 1],
+      category: TaskCategory.values[
+          (map['category'] is int) ? map['category'] : int.tryParse(map['category'].toString()) ?? 5],
     );
   }
-} 
+}

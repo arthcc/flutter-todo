@@ -8,65 +8,56 @@ class TaskProvider with ChangeNotifier {
   TaskCategory? _selectedCategory;
   TaskPriority? _selectedPriority;
   bool _isLoading = false;
-  
+
   List<Task> get tasks => _tasks;
   bool get isLoading => _isLoading;
   TaskCategory? get selectedCategory => _selectedCategory;
   TaskPriority? get selectedPriority => _selectedPriority;
-  
+
   TaskProvider() {
     _loadTasks();
   }
-  
+
   Future<void> _loadTasks() async {
-    print('Tarefas carregadas: $_tasks'); 
     _isLoading = true;
     notifyListeners();
-    
+
     try {
-      _tasks = await _taskService.getTasks();
-      _applyFilters();
+      final allTasks = await _taskService.getTasks();
+      _tasks = _applyFiltersLocally(allTasks);
     } catch (error) {
       debugPrint('Error loading tasks: $error');
+      _tasks = [];
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
-  
-  void _applyFilters() {
-    var filteredTasks = _taskService.getTasks();
-    
-    if (_selectedCategory != null) {
-      filteredTasks = _taskService.getTasksByCategory(_selectedCategory!);
-    }
-    
-    if (_selectedPriority != null) {
-      filteredTasks = _taskService.getTasksByPriority(_selectedPriority!);
-    }
-    
-    filteredTasks.then((tasks) {
-      _tasks = tasks;
-      notifyListeners();
-    });
+
+  List<Task> _applyFiltersLocally(List<Task> tasks) {
+    return tasks.where((task) {
+      final matchCategory = _selectedCategory == null || task.category == _selectedCategory;
+      final matchPriority = _selectedPriority == null || task.priority == _selectedPriority;
+      return matchCategory && matchPriority;
+    }).toList();
   }
-  
+
   void filterByCategory(TaskCategory? category) {
     _selectedCategory = category;
-    _applyFilters();
+    _loadTasks();
   }
-  
+
   void filterByPriority(TaskPriority? priority) {
     _selectedPriority = priority;
-    _applyFilters();
+    _loadTasks();
   }
-  
+
   void clearFilters() {
     _selectedCategory = null;
     _selectedPriority = null;
     _loadTasks();
   }
-  
+
   Future<void> addTask(Task task) async {
     try {
       await _taskService.addTask(task);
@@ -75,7 +66,7 @@ class TaskProvider with ChangeNotifier {
       debugPrint('Error adding task: $error');
     }
   }
-  
+
   Future<void> updateTask(Task task) async {
     try {
       await _taskService.updateTask(task);
@@ -84,7 +75,7 @@ class TaskProvider with ChangeNotifier {
       debugPrint('Error updating task: $error');
     }
   }
-  
+
   Future<void> deleteTask(String id) async {
     try {
       await _taskService.deleteTask(id);
@@ -93,7 +84,7 @@ class TaskProvider with ChangeNotifier {
       debugPrint('Error deleting task: $error');
     }
   }
-  
+
   Future<void> toggleTaskStatus(String id) async {
     try {
       final index = _tasks.indexWhere((task) => task.id == id);
@@ -101,13 +92,14 @@ class TaskProvider with ChangeNotifier {
         final task = _tasks[index];
         final updatedTask = task.copyWith(isCompleted: !task.isCompleted);
         await _taskService.updateTask(updatedTask);
-        await _loadTasks();
+        _tasks[index] = updatedTask;
+        notifyListeners();
       }
     } catch (error) {
       debugPrint('Error toggling task status: $error');
     }
   }
-  
+
   Future<List<Task>> searchTasks(String query) async {
     try {
       return await _taskService.searchTasks(query);
@@ -118,22 +110,21 @@ class TaskProvider with ChangeNotifier {
   }
 
   Future<void> importTasksFromCsv(List<Map<String, dynamic>> maps) async {
-  try {
-    print('Importando tarefas: $maps');
-    await _taskService.addTasksFromMapList(maps);
-    await _loadTasks();
-  } catch (error) {
-    debugPrint('Error importing tasks: $error');
+    try {
+      print('Importando tarefas: $maps');
+      await _taskService.addTasksFromMapList(maps);
+      await _loadTasks();
+    } catch (error) {
+      debugPrint('Error importing tasks: $error');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> exportTasksToCsv() async {
+    try {
+      return await _taskService.getAllTasksAsMapList();
+    } catch (error) {
+      debugPrint('Error exporting tasks: $error');
+      return [];
+    }
   }
 }
-
-Future<List<Map<String, dynamic>>> exportTasksToCsv() async {
-  try {
-    return await _taskService.getAllTasksAsMapList();
-  } catch (error) {
-    debugPrint('Error exporting tasks: $error');
-    return [];
-  }
-}
-
-} 

@@ -1,28 +1,20 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:open_app_file/open_app_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+
 
 class CsvUtils {
-  static const String _defaultFileName = 'todos.csv';
+  static const String _defaultFileName = 'todos_export.csv';
   static const String _webStorageKey = 'todos_csv_data';
-  
-  static Future<String> get _localPath async {
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
-  }
 
-  static Future<File> get _localFile async {
-    final path = await _localPath;
-    return File('$path/$_defaultFileName');
-  }
-
-  static Future<void> saveTodos(List<Map<String, dynamic>> todos) async {
+  // 👉 Exporta CSV (com file_saver)
+ static Future<String> exportCsv(List<Map<String, dynamic>> todos) async {
     final headers = ['title', 'description', 'completed', 'priority', 'category'];
     final rows = todos.map((todo) => [
       todo['title'],
@@ -33,56 +25,56 @@ class CsvUtils {
     ]).toList();
 
     final csvData = const ListToCsvConverter().convert([headers, ...rows]);
-    
+
     if (kIsWeb) {
       html.window.localStorage[_webStorageKey] = csvData;
-    } else {
-      final file = await _localFile;
-      await file.writeAsString(csvData);
-    }
-  }
 
-  static Future<List<Map<String, dynamic>>> loadTodos() async {
+      final blob = html.Blob([csvData], 'text/csv');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', _defaultFileName)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+
+      return 'Arquivo exportado no navegador';
+    }
+
     try {
-      String? content;
-      
-      if (kIsWeb) {
-        content = html.window.localStorage[_webStorageKey];
-        if (content == null) return [];
-      } else {
-        final file = await _localFile;
-        if (!await file.exists()) return [];
-        content = await file.readAsString();
-      }
+      final bytes = Uint8List.fromList(utf8.encode(csvData));
 
-      final fields = const CsvToListConverter().convert(content!);
-      if (fields.isEmpty || fields[0].length < 3) return [];
+      // Salva arquivo temporário
+      final dir = await getTemporaryDirectory();
+      final filePath = '${dir.path}/todos_export.csv';
+      final file = File(filePath);
+      await file.writeAsBytes(bytes);
 
-      return fields.skip(1).map((row) {
-        return {
-          "title": row[0].toString(),
-          "description": row[1].toString(),
-          "completed": row[2].toString().toLowerCase() == 'true',
-          "priority": row.length > 3 ? row[3].toString() : "Média",
-          "category": row.length > 4 ? row[4].toString() : "Outro",
-        };
-      }).toList();
+      // Salva com file_saver (para Downloads)
+      await FileSaver.instance.saveFile(
+        name: 'todos_export',
+        bytes: bytes,
+        ext: 'csv',
+        mimeType: MimeType.csv,
+      );
+
+      // Abre o arquivo local
+      await OpenAppFile.open(filePath);
+
+      return 'Arquivo exportado com sucesso.';
     } catch (e) {
-      print('Erro ao carregar todos: $e');
-      return [];
+      return 'Erro ao exportar: $e';
     }
   }
 
-  static Future<List<Map<String, dynamic>>> importCsv() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['csv'],
-      withData: true,
-    );
 
-    if (result != null && result.files.single.bytes != null) {
-      final bytes = result.files.single.bytes!;
-      final content = utf8.decode(bytes);
+
+  // 👉 Importa CSV com file_selector
+  static Future<List<Map<String, dynamic>>> importCsv() async {
+    try {
+      final typeGroup = XTypeGroup(label: 'csv', extensions: ['csv']);
+      final file = await openFile(acceptedTypeGroups: [typeGroup]);
+      if (file == null) return [];
+
+      final content = utf8.decode(await file.readAsBytes());
       final fields = const CsvToListConverter().convert(content);
 
       if (fields.isEmpty || fields[0].length < 3) return [];
@@ -96,12 +88,14 @@ class CsvUtils {
           "category": row.length > 4 ? row[4].toString() : "Outro",
         };
       }).toList();
+    } catch (e) {
+      print('Erro ao importar CSV: $e');
+      return [];
     }
-
-    return [];
   }
 
-  static Future<String> exportCsv(List<Map<String, dynamic>> todos) async {
+  // 👉 Salvamento local simplificado (web apenas)
+  static Future<void> saveTodos(List<Map<String, dynamic>> todos) async {
     final headers = ['title', 'description', 'completed', 'priority', 'category'];
     final rows = todos.map((todo) => [
       todo['title'],
@@ -115,31 +109,34 @@ class CsvUtils {
 
     if (kIsWeb) {
       html.window.localStorage[_webStorageKey] = csvData;
-      
-      final blob = html.Blob([csvData], 'text/csv');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'todos_export.csv')
-        ..click();
-      html.Url.revokeObjectUrl(url);
-
-      return 'Arquivo CSV exportado e salvo no navegador';
+    } else {
+      print('saveTodos chamado, mas não salva localmente com file_saver.');
     }
-
-    final hasPermission = await _requestPermission();
-    if (!hasPermission) return 'Permissão negada';
-
-    final dir = await getExternalStorageDirectory();
-    final file = File('${dir!.path}/todos_export.csv');
-    await file.writeAsString(csvData);
-
-    return 'Arquivo salvo em: ${file.path}';
   }
 
-  static Future<bool> _requestPermission() async {
-    if (kIsWeb) return true;
+  // 👉 Carregamento local simplificado (web apenas)
+  static Future<List<Map<String, dynamic>>> loadTodos() async {
+    if (!kIsWeb) return [];
 
-    final status = await Permission.storage.request();
-    return status.isGranted;
+    try {
+      final content = html.window.localStorage[_webStorageKey];
+      if (content == null) return [];
+
+      final fields = const CsvToListConverter().convert(content);
+      if (fields.isEmpty || fields[0].length < 3) return [];
+
+      return fields.skip(1).map((row) {
+        return {
+          "title": row[0].toString(),
+          "description": row[1].toString(),
+          "completed": row[2].toString().toLowerCase() == 'true',
+          "priority": row.length > 3 ? row[3].toString() : "Média",
+          "category": row.length > 4 ? row[4].toString() : "Outro",
+        };
+      }).toList();
+    } catch (e) {
+      print('Erro ao carregar todos do navegador: $e');
+      return [];
+    }
   }
 }
