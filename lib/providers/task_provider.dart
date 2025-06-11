@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../models/task.dart';
-import '../services/task_service.dart';
+import '../services/firestore_service.dart';
 
 class TaskProvider with ChangeNotifier {
   List<Task> _tasks = [];
-  final TaskService _taskService = TaskService();
+  final FirestoreService _firestoreService = FirestoreService();
   TaskCategory? _selectedCategory;
   TaskPriority? _selectedPriority;
   bool _isLoading = false;
@@ -23,7 +23,7 @@ class TaskProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final allTasks = await _taskService.getTasks();
+      final allTasks = await _firestoreService.getTasks();
       _tasks = _applyFiltersLocally(allTasks);
     } catch (error) {
       debugPrint('Error loading tasks: $error');
@@ -60,16 +60,19 @@ class TaskProvider with ChangeNotifier {
 
   Future<void> addTask(Task task) async {
     try {
-      await _taskService.addTask(task);
+      print('📋 TaskProvider: Adicionando task ${task.title}');
+      await _firestoreService.addTask(task);
+      print('📋 TaskProvider: Task adicionada, recarregando lista...');
       await _loadTasks();
+      print('📋 TaskProvider: Lista recarregada, ${_tasks.length} tasks no total');
     } catch (error) {
-      debugPrint('Error adding task: $error');
+      debugPrint('❌ TaskProvider: Error adding task: $error');
     }
   }
 
   Future<void> updateTask(Task task) async {
     try {
-      await _taskService.updateTask(task);
+      await _firestoreService.updateTask(task);
       await _loadTasks();
     } catch (error) {
       debugPrint('Error updating task: $error');
@@ -78,7 +81,7 @@ class TaskProvider with ChangeNotifier {
 
   Future<void> deleteTask(String id) async {
     try {
-      await _taskService.deleteTask(id);
+      await _firestoreService.deleteTask(id);
       await _loadTasks();
     } catch (error) {
       debugPrint('Error deleting task: $error');
@@ -91,7 +94,7 @@ class TaskProvider with ChangeNotifier {
       if (index != -1) {
         final task = _tasks[index];
         final updatedTask = task.copyWith(isCompleted: !task.isCompleted);
-        await _taskService.updateTask(updatedTask);
+        await _firestoreService.updateTask(updatedTask);
         _tasks[index] = updatedTask;
         notifyListeners();
       }
@@ -102,7 +105,7 @@ class TaskProvider with ChangeNotifier {
 
   Future<List<Task>> searchTasks(String query) async {
     try {
-      return await _taskService.searchTasks(query);
+      return await _firestoreService.searchTasks(query);
     } catch (error) {
       debugPrint('Error searching tasks: $error');
       return [];
@@ -112,7 +115,7 @@ class TaskProvider with ChangeNotifier {
   Future<void> importTasksFromCsv(List<Map<String, dynamic>> maps) async {
     try {
       print('Importando tarefas: $maps');
-      await _taskService.addTasksFromMapList(maps);
+      await _firestoreService.addTasksFromMapList(maps);
       await _loadTasks();
     } catch (error) {
       debugPrint('Error importing tasks: $error');
@@ -121,7 +124,7 @@ class TaskProvider with ChangeNotifier {
 
   Future<List<Map<String, dynamic>>> exportTasksToCsv() async {
     try {
-      return await _taskService.getAllTasksAsMapList();
+      return await _firestoreService.getAllTasksAsMapList();
     } catch (error) {
       debugPrint('Error exporting tasks: $error');
       return [];

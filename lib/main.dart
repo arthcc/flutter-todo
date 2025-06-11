@@ -1,12 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/add_edit_task_screen.dart';
 import 'screens/about_screen.dart';
 import 'providers/task_provider.dart';
 import 'screens/search_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    print('🔥 Inicializando Firebase...');
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('✅ Firebase inicializado com sucesso!');
+  } catch (e) {
+    print('❌ Erro ao inicializar Firebase: $e');
+  }
+  
   runApp(const MyApp());
 }
 

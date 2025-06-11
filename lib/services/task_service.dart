@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 import '../database/database_helper.dart';
 
 class TaskService {
   static const String _tasksKey = 'tasks';
-  final uuid = Uuid();
+  const uuid = Uuid();
 
   static final TaskService _instance = TaskService._internal();
   factory TaskService() => _instance;

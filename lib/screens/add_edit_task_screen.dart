@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 import '../providers/task_provider.dart';
-import 'dart:math';
 
 class AddEditTaskScreen extends StatefulWidget {
   final bool isEditing;
@@ -74,8 +74,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
 
   void _saveTask() {
     if (_formKey.currentState!.validate()) {
-      // Generate random ID for new tasks
-      final id = _taskId ?? Random().nextInt(10000).toString();
+      // Generate UUID for new tasks
+      final id = _taskId ?? const Uuid().v4();
       
       final task = Task(
         id: id,

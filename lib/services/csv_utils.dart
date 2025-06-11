@@ -70,7 +70,7 @@ class CsvUtils {
   // 👉 Importa CSV com file_selector
   static Future<List<Map<String, dynamic>>> importCsv() async {
     try {
-      final typeGroup = XTypeGroup(label: 'csv', extensions: ['csv']);
+      const typeGroup = XTypeGroup(label: 'csv', extensions: ['csv']);
       final file = await openFile(acceptedTypeGroups: [typeGroup]);
       if (file == null) return [];
 

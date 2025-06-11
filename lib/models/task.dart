@@ -81,7 +81,7 @@ class Task {
     TaskCategory? category,
   }) {
     return Task(
-      id: this.id,
+      id: id,
       title: title ?? this.title,
       description: description ?? this.description,
       isCompleted: isCompleted ?? this.isCompleted,
@@ -104,6 +104,19 @@ class Task {
     };
   }
 
+  /// Serializa para Firestore (usa booleanos reais)
+  Map<String, dynamic> toFirestoreMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'isCompleted': isCompleted, // ✅ Firestore usa booleano real
+      'dueDate': dueDate?.millisecondsSinceEpoch,
+      'priority': priority.index,
+      'category': category.index,
+    };
+  }
+
   /// Reconstrói a Task a partir de um Map vindo do banco
   factory Task.fromMap(Map<String, dynamic> map) {
     return Task(
@@ -120,6 +133,21 @@ class Task {
           (map['priority'] is int) ? map['priority'] : int.tryParse(map['priority'].toString()) ?? 1],
       category: TaskCategory.values[
           (map['category'] is int) ? map['category'] : int.tryParse(map['category'].toString()) ?? 5],
+    );
+  }
+
+  /// Reconstrói a Task a partir do Firestore
+  factory Task.fromFirestoreMap(Map<String, dynamic> map) {
+    return Task(
+      id: map['id'].toString(),
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      isCompleted: map['isCompleted'] ?? false, // ✅ Firestore usa booleano real
+      dueDate: map['dueDate'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['dueDate'])
+          : null,
+      priority: TaskPriority.values[map['priority'] ?? 1],
+      category: TaskCategory.values[map['category'] ?? 5],
     );
   }
 }
